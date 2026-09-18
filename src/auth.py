@@ -1208,7 +1208,9 @@ def require_login():
 
         st.error(
             "Could not connect to MongoDB. "
-            "Make sure MongoDB is running and MONGODB_URI is configured.",
+            + db.connection_error()
+            + " For Streamlit Cloud, add MONGODB_URI and "
+            "GRADESENSE_DB_NAME under App settings > Secrets.",
             icon="🔌",
         )
 

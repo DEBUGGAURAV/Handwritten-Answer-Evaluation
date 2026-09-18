@@ -6,23 +6,58 @@ import random
 import secrets
 from typing import Optional, List
 
+from dotenv import load_dotenv
 from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import PyMongoError
 
 import email_utils
 
-MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
-DB_NAME = os.environ.get("GRADESENSE_DB_NAME", "gradesense")
+load_dotenv()
+
+
+def _setting(name: str, default: str = "") -> str:
+    value = os.environ.get(name)
+    if value:
+        return value
+
+    try:
+        import streamlit as st
+
+        value = st.secrets.get(name)
+        if value:
+            return str(value)
+    except Exception:
+        pass
+
+    return default
+
+
+MONGODB_URI = _setting("MONGODB_URI")
+DB_NAME = _setting("GRADESENSE_DB_NAME", "gradesense")
 
 _client = None
 _db = None
+_connection_error = ""
 
 
 def get_db():
-    global _client, _db
+    global _client, _db, _connection_error
+
+    if not MONGODB_URI:
+        _connection_error = (
+            "MONGODB_URI is not configured. Add it to a local .env file "
+            "or to Streamlit Cloud secrets."
+        )
+        raise RuntimeError(_connection_error)
 
     if _db is None:
-        _client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+        _client = MongoClient(
+            MONGODB_URI,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=5000,
+        )
+        _client.admin.command("ping")
         _db = _client[DB_NAME]
 
         _db.users.create_index("username", unique=True)
@@ -35,11 +70,23 @@ def get_db():
 
 
 def check_connection() -> bool:
+    global _client, _db, _connection_error
+
     try:
         get_db().client.admin.command("ping")
+        _connection_error = ""
         return True
-    except Exception:
+    except (PyMongoError, RuntimeError, OSError) as error:
+        _connection_error = str(error)
+        if _client is not None:
+            _client.close()
+        _client = None
+        _db = None
         return False
+
+
+def connection_error() -> str:
+    return _connection_error or "MongoDB connection is unavailable."
 
 
 def _hash_password(password: str, salt: Optional[bytes] = None) -> str:

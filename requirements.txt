@@ -24,5 +24,6 @@ pyarrow>=14.0.0
 # PDF answer sheet support (multi-page booklets, no external poppler needed)
 PyMuPDF>=1.23.0
 
-# database using MongoDB
-pymongo
+# Database and environment configuration
+pymongo>=4.6.0
+python-dotenv>=1.0.0
