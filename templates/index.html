@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review Sentiment</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 3rem auto; padding: 0 1rem; }
+    textarea { width: 100%; min-height: 140px; box-sizing: border-box; padding: .75rem; }
+    button { margin-top: .75rem; padding: .65rem 1rem; cursor: pointer; }
+    #result { margin-top: 1rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Review Sentiment</h1>
+  <textarea id="review" placeholder="Enter a product review"></textarea>
+  <button id="submit" type="button">Classify review</button>
+  <p id="result" role="status"></p>
+  <script>
+    const review = document.querySelector('#review');
+    const result = document.querySelector('#result');
+    document.querySelector('#submit').addEventListener('click', async () => {
+      result.textContent = 'Classifying...';
+      try {
+        const response = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ review: review.value })
+        });
+        const data = await response.json();
+        result.textContent = response.ok
+          ? `${data.label} (${data.confidence}% confidence)`
+          : data.error;
+      } catch (error) {
+        result.textContent = 'Unable to contact the server.';
+      }
+    });
+  </script>
+</body>
+</html>
